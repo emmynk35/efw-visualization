@@ -40,10 +40,10 @@ var path = d3.geoPath()
     .projection(projection);
 
 var data = {};
-var colorScheme = d3.schemeReds[4];
+var colorScheme = ['#f6eff7','#bdc9e1','#67a9cf','#1c9099','#016c59'];
 colorScheme.unshift("#eee")
 var colorScale = d3.scaleThreshold()
-    .domain([2,4,6,8])
+    .domain([0,2,4,6,8,10])
     .range(colorScheme);
 
 var g = svg.append("g")
@@ -54,7 +54,7 @@ g.append("text")
     .attr("x", 0)
     .attr("y", -6)
     .text("EFW Score");
-var labels = ['0-2','2-4','4-6','6-8','8-10'];
+var labels = ['undefined','0-2','2-4','4-6','6-8','8-10'];
 var legend = d3.legendColor()
     .labels(function (d) { return labels[d.i]; })
     .shapePadding(4)
@@ -76,11 +76,10 @@ d3.queue()
     })
     .await(ready);
 
+var currYear = 2018;
 function ready(error, topo) {
     if (error) throw error;
-    var currYear = 2018;
-    //console.log(data)
-    svg.append("g")
+    var s = svg.append("g")
         .attr("class", "countries")
         .selectAll("path")
         .data(topo.features)
@@ -88,18 +87,34 @@ function ready(error, topo) {
             .attr("fill", function (d){
                 if (data[currYear][d.id]) {
                   d.total = data[currYear][d.id]['total'];
+                  if (d.total==='') d.total = -1;
                 } 
-                 else {
-                   d.total = 0;
+                 else{
+                   d.total = -1;
                  }
-                 console.log(d.total)
                 return colorScale(d.total);
             })
             .attr("d", path);
     
-    d3.select('#year-slider').on("change", function() {
-      var yearInput = +d3.select(this).node().value;
-    });
+	  var slider = d3.select("#year-slider")
+			.on("input", function() {
+				var year = this.value;
+				document.getElementById("year").innerHTML=year;
+        currYear=year;
+        update(year)
+			});
+
+    function update(year){
+      console.log(year)
+      slider.property("value", year);
+      d3.select("#year").text(year);
+      s.style("fill", function(d) {
+        if (data[currYear] && data[currYear][d.id]) return colorScale(data[currYear][d.id]['total']);
+        else return colorScale(-1);
+      });
+    }
+
+    update(currYear) 
 }
 
 </script>
