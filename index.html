@@ -15,18 +15,35 @@
       text-anchor: start;
       font-weight: bold;
   }
+  #year-slider {
+    -webkit-appearance: none;
+    border-style: solid;
+  }
+  .hidden {
+      display: none;
+  }
+  .tooltip {
+        color: #222; 
+        background: #fff; 
+        border-radius: 3px; 
+        box-shadow: 0px 0px 2px 0px #a6a6a6; 
+        padding: .2em; 
+        text-shadow: #f5f5f5 0 1px 0;
+        opacity: 0.9; 
+        position: absolute;
+  }
+  </style>
 </style>
 <div>
 <svg width="960" height="600">
     <div>
     <label for="nVel">
-      Year <span id="year">2018</span>
-      <input id="year-slider" style="width: 200px;" type="range" min="1970" max="2018" value="2018" step='1'>
+      Year: <span id="year">2018</span>
+      <input id="year-slider" style="width: 200px;" type="range" min="0" max="24" value="24" step='1'>
     </label>
-  </div>
-  <div>
-    <button id="zoom-in">+</button>
-    <button id="zoom-out">-</button>
+    <div>
+    <div class="tooltip"></div>
+    </div>
   </div>
 </svg>
 </div>
@@ -39,40 +56,9 @@
 var svg = d3.select("svg"),
     width = +svg.attr("width"),
     height = +svg.attr("height");
-
-var path = d3.geoPath();
-var projection = d3.geoNaturalEarth()
-    .scale(width / 2 / Math.PI)
-    .translate([width / 2, height / 2])
-var path = d3.geoPath()
-    .projection(projection);
-
 var data = {};
-var colorScheme = ['#f6eff7','#bdc9e1','#67a9cf','#1c9099','#016c59'];
-colorScheme.unshift("#eee")
-var colorScale = d3.scaleThreshold()
-    .domain([0,2,4,6,8,10])
-    .range(colorScheme);
-
-var g = svg.append("g")
-    .attr("class", "legendThreshold")
-    .attr("transform", "translate(20,20)");
-g.append("text")
-    .attr("class", "caption")
-    .attr("x", 0)
-    .attr("y", -6)
-    .text("Economic Freedom of the World (EFW) Score");
-var labels = ['undefined','0-2','2-4','4-6','6-8','8-10'];
-var legend = d3.legendColor()
-    .labels(function (d) { return labels[d.i]; })
-    .shapePadding(4)
-    .scale(colorScale);
-svg.select(".legendThreshold")
-    .call(legend);
-
-
+var years = [];
 d3.queue()
-    //.defer(d3.json, "http://enjalot.github.io/wwsd/data/world/world-110m.geojson")
     .defer(d3.json, "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
     .defer(d3.csv, "info.csv", function(d) {
       if (!data[d.year]) {
@@ -85,15 +71,48 @@ d3.queue()
     })
     .await(ready);
 
+var path = d3.geoPath();
+var projection = d3.geoNaturalEarth()
+    .scale(width / 2 / Math.PI)
+    .translate([width / 2, height / 2])
+var path = d3.geoPath()
+    .projection(projection);
+
+var colorScheme = ['#B789FF','#8857D5','#6433B2','#461692','#220058',];
+colorScheme.unshift("#eee")
+var colorScale = d3.scaleThreshold()
+    .domain([2,4,6,8])
+    .range(colorScheme);
+
+var g = svg.append("g")
+    .attr("class", "legendThreshold")
+    .attr("transform", "translate(20,20)");
+g.append("text")
+    .attr("class", "caption")
+    .attr("x", 0)
+    .attr("y", -6)
+    .text("Economic Freedom of the World (EFW) Score");
+var labels = ['no data','<= 2.00','2.01-4.00','4.01-6.00','6.01-8.00','> 8.00 (most free)'];
+var legend = d3.legendColor()
+    .labels(function (d) { return labels[d.i]; })
+    .shapePadding(4)
+    .scale(colorScale);
+svg.select(".legendThreshold")
+    .call(legend);
+
+var tooltip = d3.select("div.tooltip");
+
+var currFilter = 'total';
 var currYear = 2018;
 function ready(error, topo) {
     if (error) throw error;
+    years = Object.keys(data); 
     var s = svg.append("g")
         .attr("class", "countries")
         .selectAll("path")
         .data(topo.features)
         .enter().append("path")
-            .attr("fill", function (d){
+        .attr("fill", function (d){
                 if (data[currYear][d.id]) {
                   d.total = data[currYear][d.id]['total'];
                   if (d.total==='') d.total = -1;
@@ -103,26 +122,83 @@ function ready(error, topo) {
                  }
                 return colorScale(d.total);
             })
-            .attr("d", path);
+        .attr("d", path)
+        .on("mouseover",function(d,i){
+                d3.select(this).attr("fill","grey").attr("stroke-width",2);
+                return tooltip.style("hidden", false).html(d.properties.name);
+            })
+                    .on("mousemove",function(d){
+                tooltip.classed("hidden", false)
+                       .style("top", (d3.event.pageY) + "px")
+                       .style("left", (d3.event.pageX + 10) + "px")
+                       .html(d.properties.name+' | '+getInfo(currFilter, d.id));
+            })
+            .on("mouseout",function(d,i){
+                d3.select(this).attr("fill","white").attr("stroke-width",1);
+                tooltip.classed("hidden", true);
+            });
     
+    function getInfo(filter, id) {
+      var f = '';
+      switch (filter) {
+        case 'total':
+          f = 'Total Score: '; break;
+        case 'a1':
+          f = 'Size of Government Score: '; break;
+        case 'a2':
+          f = 'Legal Systems: '; break;
+        case 'a3':
+          f = 'Sound Money: '; break;
+        case 'a4':
+          f = 'Trade Score: '; break;
+        case 'a5':
+          f = 'Regulation Score: '; break;
+        default:
+          f = 'Total Score: ';
+      }
+
+      if (data[currYear] && data[currYear][id]) {
+          var v = data[currYear][id];
+          if (filter == 'total') {
+            return f + v.total; 
+          } else if (filter == 'a1') {
+            return f + v.a1;
+          } else if (filter == 'a2') {
+            return f + v.a2;
+          }
+          else if (filter == 'a3') {
+            return f + v.a3;
+          }
+          else if (filter == 'a4') {
+            return f + v.a4;
+          }
+          else if (filter == 'a5') {
+            return f + v.a5;
+          }
+      } else {
+        return f + 'undefined';
+      }
+    }
+
 	  var slider = d3.select("#year-slider")
 			.on("input", function() {
-				var year = this.value;
+				var year = years[this.value];
 				document.getElementById("year").innerHTML=year;
         currYear=year;
         update(year)
 			});
+
     function update(year){
-      slider.property("value", year);
+      slider.property("value", this.value);
       d3.select("#year").text(year);
       s.style("fill", function(d) {
         if (data[currYear] && data[currYear][d.id]) return colorScale(data[currYear][d.id]['total']);
         else return colorScale(-1);
       });
     }
+
     update(currYear) 
 }
-
 
 
 </script>
