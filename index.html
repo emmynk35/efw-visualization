@@ -32,22 +32,42 @@
         opacity: 0.9; 
         position: absolute;
   }
+  .container {
+    display: flex;
+  }
+  .stuff {
+    width: 30%;
+  }
   </style>
 </style>
-<div>
-<svg width="960" height="600">
-    <div>
-    <label for="nVel">
-      <div>
-      Year: <span id="year">2018</span>
+<div class="container">
+  <svg width="960" height="600">
+      <div class="tooltip"></div>
+  </svg>
+ <div class="stuff">
+      <label for="nVel">
+        <div>
+        Year: <span id="year">2018</span>
+        </div>
+        <input id="year-slider" style="width: 200px;" type="range" min="0" max="24" value="24" step='1'>
+      </label>
+      <div id='radios'>
+      <p>Filter by area:</p>
+        <input type="radio" id="total" name="score" value="total" checked>
+        <label for="age1">Total Score</label><br>
+        <input type="radio" id="a1" name="score" value="a1">
+        <label for="age2">Area 1: Size of Government</label><br>  
+        <input type="radio" id="a2" name="score" value="a2">
+        <label for="age3">Area 2: Legal Sysem and Property Rights</label> <br>  
+        <input type="radio" id="a3" name="score" value="a3">
+        <label for="age3">Area 3: Sound Money</label> <br>  
+        <input type="radio" id="a4" name="score" value="a4">
+        <label for="age3">Area 4: Freedom to Trade Internationally</label> <br>  
+        <input type="radio" id="a5" name="score" value="a5">
+        <label for="age3">Area 5: Regulation</label> <br>  
+        <br><br>
       </div>
-      <input id="year-slider" style="width: 200px;" type="range" min="0" max="24" value="24" step='1'>
-    </label>
-    <div>
-    <div class="tooltip"></div>
     </div>
-  </div>
-</svg>
 </div>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
@@ -55,6 +75,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.js"></script>
 <script src="https://d3js.org/d3-drag.v2.min.js"></script>
 <script>
+
 var svg = d3.select("svg"),
     width = +svg.attr("width"),
     height = +svg.attr("height");
@@ -93,7 +114,7 @@ g.append("text")
     .attr("class", "caption")
     .attr("x", 0)
     .attr("y", -6)
-    .text("Economic Freedom of the World (EFW) Score");
+    .text("Economic Freedom of the World (EFW) Score - out of 10");
 var labels = ['no data','<= 2.00','2.01-4.00','4.01-6.00','6.01-8.00','> 8.00 (most free)'];
 var legend = d3.legendColor()
     .labels(function (d) { return labels[d.i]; })
@@ -135,15 +156,15 @@ function ready(error, topo) {
         case "total":
           return "Total Score: "; break;
         case "a1":
-          return "Size of Government Score: "; break;
+          return "Area 1 Score: "; break;
         case "a2":
-          return "Legal Systems Score: "; break;
+          return "Area 2 Score: "; break;
         case "a3":
-          return "Sound Money Score: "; break;
+          return "Area 3 Score: "; break;
         case "a4":
-          return "International Trade Freedom Score: "; break;
+          return "Area 4 Score: "; break;
         case "a5":
-          return "Regulation Score: "; break;
+          return "Area 5 Score: "; break;
         default:
           return "";
       }
@@ -157,14 +178,40 @@ function ready(error, topo) {
         update(currYear)
 			});
 
+    var total = d3.select("#total")
+      .on("click", function() {
+        currFilter = 'total';
+        updateFilter(currFilter);
+      });
+    var total = d3.select("#a1")
+      .on("click", function() {
+        currFilter = 'a1';
+        updateFilter(currFilter);
+      });
+    var total = d3.select("#a2")
+      .on("click", function() {
+        currFilter = 'a2';
+        updateFilter(currFilter);
+      });
+    var total = d3.select("#a3")
+      .on("click", function() {
+        currFilter = 'a3';
+        updateFilter(currFilter);
+      });
+    var total = d3.select("#a4")
+      .on("click", function() {
+        currFilter = 'a4';
+        updateFilter(currFilter);
+      });
+    var total = d3.select("#a5")
+      .on("click", function() {
+        currFilter = 'a5';
+        updateFilter(currFilter);
+    });
+
     function update(year){
       slider.property("value", this.value);
       d3.select("#year").text(year);
-      /*s.style("fill", function(d) {
-        console.log(year)
-        if (data[currYear] && data[currYear][d.id]) return colorScale(d.info[currFilter]);
-        else return colorScale(-1);
-      });*/
       s.attr("fill", function (d){
                 if (d.info === undefined) {
                   d.info = {};
@@ -189,7 +236,14 @@ function ready(error, topo) {
             })
     }
 
-    update(currYear) 
+    function updateFilter(filter) {
+      s.attr("fill", function (d) {
+        return colorScale(d.info[currFilter]);
+      })
+    }
+
+    update(currYear);
+    updateFilter(currFilter);
 }
 
 
