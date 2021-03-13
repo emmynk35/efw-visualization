@@ -5,6 +5,7 @@
     fill: none;
     stroke: #CFCFCF;
     stroke-linejoin: round;
+    stroke-width: 1;
   }
   .legendThreshold {
       font-size: 12px;
@@ -21,6 +22,9 @@
   }
   .hidden {
       display: none;
+  }
+  .active{
+    fill: #FFFA3C;
   }
   .tooltip {
         color: #222; 
@@ -52,9 +56,9 @@
         <input id="year-slider" style="width: 200px;" type="range" min="0" max="24" value="24" step='1'>
       </label>
       <div id='radios'>
-      <p>Filter by area:</p>
+      <p>Filter by area of measurement:</p>
         <input type="radio" id="total" name="score" value="total" checked>
-        <label for="age1">Total Score</label><br>
+        <label for="age1">Total Score (average of 5 areas)</label><br>
         <input type="radio" id="a1" name="score" value="a1">
         <label for="age2">Area 1: Size of Government</label><br>  
         <input type="radio" id="a2" name="score" value="a2">
@@ -67,7 +71,32 @@
         <label for="age3">Area 5: Regulation</label> <br>  
         <br><br>
       </div>
-    </div>
+      <div id="rankings">
+        <table id="rankings-table">
+        <thead>
+            <tr>
+                <th>Country</th>
+                <th>Total Score</th>
+                <th>Area 1 Score</th>
+                <th>Area 2 Score</th>
+                <th>Area 3 Score</th>
+                <th>Area 4 Score</th>
+                <th>Area 5 Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Dom</td>
+                <td>6000</td>
+            </tr>
+            <tr class="active-row">
+                <td>Melissa</td>
+                <td>5150</td>
+            </tr>
+        </tbody>
+        </table>
+      </div>
+  </div>
 </div>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
@@ -79,6 +108,7 @@
 var svg = d3.select("svg"),
     width = +svg.attr("width"),
     height = +svg.attr("height");
+
 var data = {};
 var years = [];
 d3.queue()
@@ -101,10 +131,10 @@ var projection = d3.geoNaturalEarth()
 var path = d3.geoPath()
     .projection(projection);
 
-var colorScheme = ['#E1CCFF','#B190E1','#8157BE','#4D208E','#1F004B',];
+var colorScheme = ['#E7D7F7','#D1b3f2','#bd91eb','#ac6eed','#9752e0','#8139ce','#6928af','#51198c','#35115c','#090011'];
 colorScheme.unshift("#eee")
 var colorScale = d3.scaleThreshold()
-    .domain([0,2,4,6,8])
+    .domain([0,1,2,3,4,5,6,7,8,9])
     .range(colorScheme);
 
 var g = svg.append("g")
@@ -115,18 +145,20 @@ g.append("text")
     .attr("x", 0)
     .attr("y", -6)
     .text("Economic Freedom of the World (EFW) Score - out of 10");
-var labels = ['no data','<= 2.00','2.01-4.00','4.01-6.00','6.01-8.00','> 8.00 (most free)'];
+var labels = ['no data','0.00-1.00 (least free)','1.01-2.00','2.01-3.00','3.01-4.00','4.01-5.00','5.01-6.00','6.01-7.00','7.01-8.00','8.01-9.00','9.01-10.00 (most free)'];
 var legend = d3.legendColor()
     .labels(function (d) { return labels[d.i]; })
     .shapePadding(4)
-    .scale(colorScale);
+    .scale(colorScale)
 svg.select(".legendThreshold")
     .call(legend);
 
+var lastActive = "";
 var tooltip = d3.select("div.tooltip");
-
 var currFilter = 'total';
 var currYear = 2018;
+var all_countries = [];
+var selected_countries = ['AUS'];
 function ready(error, topo) {
     if (error) throw error;
     years = Object.keys(data); 
@@ -136,8 +168,13 @@ function ready(error, topo) {
         .data(topo.features)
         .enter().append("path")
         .attr("d", path)
+        .on("click", function(d) {
+          if (d.info[currFilter] != -1) {
+           clicked(d3.select(this));
+          }
+        })
         .on("mouseover",function(d,i){
-                d3.select(this).attr("stroke-width",2).attr("stroke",'#FFF000');
+                d3.select(this).attr("fill",'#FF8D41');
                 return tooltip.style("hidden", false).html(d.properties.name);
             })
             .on("mousemove",function(d){
@@ -147,10 +184,16 @@ function ready(error, topo) {
                        .html(d.properties.name+' | '+ description(currFilter) + (d.info[currFilter] == -1 ? 'no data' : d.info[currFilter]));
             })
             .on("mouseout",function(d,i){
-                d3.select(this).attr("stroke-width",1).attr("stroke",'#CFCFCF');
+                //d3.select(this).attr("stroke-width",1).attr("stroke",'#CFCFCF');
+                updateFilter(currFilter);
                 tooltip.classed("hidden", true);
             });
-    
+    var zoom = d3.zoom().on("zoom", zoomed);
+    svg.call(zoom);
+    function zoomed() {
+      s.attr("transform", d3.event.transform);
+    }
+
     function description(filter) {
       switch(filter) {
         case "total":
@@ -240,6 +283,32 @@ function ready(error, topo) {
       s.attr("fill", function (d) {
         return colorScale(d.info[currFilter]);
       })
+    }
+
+    function clicked(d) {
+      var xy = getBoundBox(d);
+      if(d.classed("active")) {
+        d.attr("class", function(d) {
+          return colorScale(d.info[currFilter]);
+        });
+        lastActive = "";
+      } else {
+        d.attr("class", "active");
+        lastActive = d.attr("id");
+      }
+    }
+
+    function resetAll() {
+      s.attr("fill", function (d){
+       return colorScale(d.info[currFilter]); 
+      });
+    }
+
+    function getBoundBox(x) {
+      var element = x.node(), bbox = element.getBBox();
+      cx = bbox.x + bbox.width/2;
+      cy = bbox.y + bbox.height/2;
+      return [bbox.x, bbox.width, bbox.y, bbox.height, cx, cy]; 
     }
 
     update(currYear);
