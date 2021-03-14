@@ -6,6 +6,7 @@
     stroke: #CFCFCF;
     stroke-linejoin: round;
     stroke-width: 1;
+    filter: brightness(100%);
   }
   .legendThreshold {
       font-size: 12px;
@@ -23,8 +24,8 @@
   .hidden {
       display: none;
   }
-  .active{
-    fill: #FFFA3C;
+  .inactive{
+    fill: grey;
   }
   .tooltip {
         color: #222; 
@@ -71,30 +72,8 @@
         <label for="age3">Area 5: Regulation</label> <br>  
         <br><br>
       </div>
-      <div id="rankings">
-        <table id="rankings-table">
-        <thead>
-            <tr>
-                <th>Country</th>
-                <th>Total Score</th>
-                <th>Area 1 Score</th>
-                <th>Area 2 Score</th>
-                <th>Area 3 Score</th>
-                <th>Area 4 Score</th>
-                <th>Area 5 Score</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Dom</td>
-                <td>6000</td>
-            </tr>
-            <tr class="active-row">
-                <td>Melissa</td>
-                <td>5150</td>
-            </tr>
-        </tbody>
-        </table>
+      <div>
+        <button id="reset-btn">Reset</button>
       </div>
   </div>
 </div>
@@ -158,7 +137,7 @@ var tooltip = d3.select("div.tooltip");
 var currFilter = 'total';
 var currYear = 2018;
 var all_countries = [];
-var selected_countries = ['AUS'];
+var selected_countries = [];
 function ready(error, topo) {
     if (error) throw error;
     years = Object.keys(data); 
@@ -170,11 +149,11 @@ function ready(error, topo) {
         .attr("d", path)
         .on("click", function(d) {
           if (d.info[currFilter] != -1) {
-           clicked(d3.select(this));
+           clicked(d3.select(this), d);
           }
         })
         .on("mouseover",function(d,i){
-                d3.select(this).attr("fill",'#FF8D41');
+                //d3.select(this).attr("fill",'#FFFA3C');
                 return tooltip.style("hidden", false).html(d.properties.name);
             })
             .on("mousemove",function(d){
@@ -184,8 +163,7 @@ function ready(error, topo) {
                        .html(d.properties.name+' | '+ description(currFilter) + (d.info[currFilter] == -1 ? 'no data' : d.info[currFilter]));
             })
             .on("mouseout",function(d,i){
-                //d3.select(this).attr("stroke-width",1).attr("stroke",'#CFCFCF');
-                updateFilter(currFilter);
+                //updateFilter(currFilter);
                 tooltip.classed("hidden", true);
             });
     var zoom = d3.zoom().on("zoom", zoomed);
@@ -212,6 +190,13 @@ function ready(error, topo) {
           return "";
       }
     }
+
+    var reset = d3.select("#reset-btn")
+      .on("click", function(d) {
+        selected_countries = [];
+        updateColors();
+        console.log("reset");
+      });
 
 	  var slider = d3.select("#year-slider")
 			.on("input", function() {
@@ -277,43 +262,44 @@ function ready(error, topo) {
                  }
                 return colorScale(d.info[currFilter]);
             })
+      updateColors();
     }
 
     function updateFilter(filter) {
-      s.attr("fill", function (d) {
-        return colorScale(d.info[currFilter]);
-      })
+      updateColors();
     }
 
-    function clicked(d) {
-      var xy = getBoundBox(d);
-      if(d.classed("active")) {
-        d.attr("class", function(d) {
-          return colorScale(d.info[currFilter]);
+    function clicked(d, x) {
+      if (d.classed("active")) {
+        selected_countries = selected_countries.filter(function (c) {
+          console.log(c);
+          console.log(x.id);
+          return c!==x.id;
         });
+        console.log(selected_countries);
         lastActive = "";
+        d.attr("class","nonactive");
       } else {
+        selected_countries.push(x.id);
         d.attr("class", "active");
         lastActive = d.attr("id");
       }
+      updateColors();
     }
 
-    function resetAll() {
-      s.attr("fill", function (d){
-       return colorScale(d.info[currFilter]); 
+    function updateColors() {
+      console.log(selected_countries);
+      s.attr("fill", function(d) {
+        if (selected_countries.includes(d.id) || selected_countries.length === 0) {
+          return colorScale(d.info[currFilter]);
+        } else {
+          return "grey";
+        }
       });
-    }
-
-    function getBoundBox(x) {
-      var element = x.node(), bbox = element.getBBox();
-      cx = bbox.x + bbox.width/2;
-      cy = bbox.y + bbox.height/2;
-      return [bbox.x, bbox.width, bbox.y, bbox.height, cx, cy]; 
     }
 
     update(currYear);
     updateFilter(currFilter);
 }
-
 
 </script>
