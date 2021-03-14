@@ -153,7 +153,6 @@ function ready(error, topo) {
           }
         })
         .on("mouseover",function(d,i){
-                //d3.select(this).attr("fill",'#FFFA3C');
                 return tooltip.style("hidden", false).html(d.properties.name);
             })
             .on("mousemove",function(d){
@@ -163,7 +162,6 @@ function ready(error, topo) {
                        .html(d.properties.name+' | '+ description(currFilter) + (d.info[currFilter] == -1 ? 'no data' : d.info[currFilter]));
             })
             .on("mouseout",function(d,i){
-                //updateFilter(currFilter);
                 tooltip.classed("hidden", true);
             });
     var zoom = d3.zoom().on("zoom", zoomed);
@@ -195,7 +193,6 @@ function ready(error, topo) {
       .on("click", function(d) {
         selected_countries = [];
         updateColors();
-        console.log("reset");
       });
 
 	  var slider = d3.select("#year-slider")
@@ -272,11 +269,8 @@ function ready(error, topo) {
     function clicked(d, x) {
       if (d.classed("active")) {
         selected_countries = selected_countries.filter(function (c) {
-          console.log(c);
-          console.log(x.id);
           return c!==x.id;
         });
-        console.log(selected_countries);
         lastActive = "";
         d.attr("class","nonactive");
       } else {
@@ -288,7 +282,6 @@ function ready(error, topo) {
     }
 
     function updateColors() {
-      console.log(selected_countries);
       s.attr("fill", function(d) {
         if (selected_countries.includes(d.id) || selected_countries.length === 0) {
           return colorScale(d.info[currFilter]);
